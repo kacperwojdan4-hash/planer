@@ -2,25 +2,26 @@
 <html lang="pl">
 <head>
 <meta charset="utf-8">
+<meta name="color-scheme" content="dark">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Planer</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Planer">
-<meta name="theme-color" content="#4f6df5">
+<meta name="theme-color" content="#0f1216">
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mu:#6b7480;--bd:#e3e6ea;--ac:#4f6df5;--in:#1f9d6b;--ex:#e0504a;--szk:#e8a317;--prc:#4f6df5;--inn:#9b6bd6;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171b;--card:#1d2127;--tx:#eceff2;--mu:#98a1ad;--bd:#2c323a;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#14171b;--card:#1d2127;--tx:#eceff2;--mu:#98a1ad;--bd:#2c323a;color-scheme:dark}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
+:root{--bg:#0f1216;--card:#1a1e24;--tx:#eceff2;--mu:#98a1ad;--bd:#2a3038;--ac:#5b7bff;--in:#2fbf84;--ex:#f06a63;--szk:#eab33a;--prc:#5b7bff;--inn:#a77ee0;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{background:#0f1216;scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{max-width:860px;margin:0 auto;padding:12px}
 h1{font-size:20px;margin:6px 0 10px}h2{margin:2px 0;font-size:20px}h3{margin:0 0 8px;font-size:15px;text-transform:capitalize}
 .top{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+#bg{position:fixed;inset:0;z-index:-1;background:center/cover no-repeat}
+body.hasbg .card,body.hasbg .day{background:rgba(26,30,36,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .tab,.nav,button{border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;padding:7px 12px;cursor:pointer;font:inherit}
 .tab.on,.pri{background:var(--ac);border-color:var(--ac);color:#fff}
 .mon{flex:1;text-align:center;font-weight:600;text-transform:capitalize;min-width:120px}
@@ -45,6 +46,7 @@ input,select{border:1px solid var(--bd);background:var(--bg);color:var(--tx);bor
 </style>
 </head>
 <body>
+<div id="bg"></div>
 <main>
 <h1>📅 Planer</h1>
 <div class="top">
@@ -56,7 +58,9 @@ input,select{border:1px solid var(--bd);background:var(--bg);color:var(--tx);bor
   <button class="nav" onclick="shift(-1)">‹</button><div class="mon" id="mon"></div><button class="nav" onclick="shift(1)">›</button>
 </div>
 <div id="app"></div>
-<p class="mu" style="font-size:12px">Dane zapisują się w tej przeglądarce na tym urządzeniu.</p>
+<div class="mu" style="font-size:12px">Dane zapisują się w tej przeglądarce na tym urządzeniu.
+<div class="f"><label class="tab" style="cursor:pointer">🖼 Zmień tło<input type="file" accept="image/*" hidden onchange="pickBg(this)"></label><button onclick="clearBg()">Usuń tło</button></div>
+<div id="dimwrap" style="display:none;margin-top:8px">Przyciemnienie <input id="dim" type="range" min="0.2" max="0.9" step="0.05" oninput="setDim(this.value)"></div></div>
 </main>
 <script>
 const $=s=>document.querySelector(s);
@@ -148,7 +152,23 @@ function addTx(e){e.preventDefault();const f=e.target.elements;
 function delEv(id){S.events=S.events.filter(x=>x.id!==id);save();render()}
 function delTx(id){S.tx=S.tx.filter(x=>x.id!==id);save();render()}
 function setB(c,v){S.budgets[c]=parseFloat(v)||0;save();render()}
+const BG_KEY='planer_bg',DIM_KEY='planer_dim';
+function applyBg(){let img=null,dim=0.55;
+  try{img=localStorage.getItem(BG_KEY);const d=localStorage.getItem(DIM_KEY);if(d!==null)dim=parseFloat(d)}catch(e){}
+  const b=$('#bg');
+  if(img){const g='rgba(15,18,22,'+dim+')';b.style.backgroundImage='linear-gradient('+g+','+g+'),url("'+img+'")';document.body.classList.add('hasbg')}
+  else{b.style.backgroundImage='none';document.body.classList.remove('hasbg')}
+  $('#dim').value=dim;$('#dimwrap').style.display=img?'block':'none'}
+function pickBg(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,1200/Math.max(im.width,im.height));
+    const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
+    c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+    try{localStorage.setItem(BG_KEY,c.toDataURL('image/jpeg',0.8))}catch(e){alert('Nie udało się zapisać tła.')}
+    applyBg()};im.src=r.result};r.readAsDataURL(f);inp.value=''}
+function clearBg(){try{localStorage.removeItem(BG_KEY)}catch(e){}applyBg()}
+function setDim(v){try{localStorage.setItem(DIM_KEY,v)}catch(e){}applyBg()}
 render();
+applyBg();
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}
 </script>
 </body>
